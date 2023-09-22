@@ -50,29 +50,36 @@ def create_db():
 # 2. cve에 나온 내용 크롤링
 total_info = [] # [cve_name, vendors ,products ,update_date ,cvss_v2 ,cvss_v3 ,desc_en]
 
-response = requests.get(target_path)
-#print(target_path)
-
+page_num = 1
 total_craw = ''
-if response.status_code == 200:
-    # BeautifulSoup을 사용하여 HTML 파싱
-    soup = bs(response.text, 'html.parser')
-
-    # 웹 페이지에서 특정 테이블 선택
-    # 웹 페이지의 HTML 구조를 확인하여 실제 표에 해당하는 부분을 선택합니다.
-    table = soup.find('table')  # 이 부분을 웹 페이지의 실제 HTML 구조에 맞게 수정하세요.
-
-    # 표의 각 행(row)과 열(column) 순회
-    for row in table.find_all('tr'):
-        columns = row.find_all('td')
-        for column in columns:
-            # 각 셀의 내용을 출력하거나 원하는 처리를 수행
-            total_craw += "\n"+column.text
-            #print(column.text)  # 현재는 텍스트를 출력하는 예제입니다.
-
-else:
-    print('HTTP 요청에 실패했습니다. 상태 코드:', response.status_code)
+while True:
     
+    page_path = target_path + str(page_num)
+    response = requests.get(page_path)
+    #print(target_path)
+    
+    if response.status_code == 200:
+        # BeautifulSoup을 사용하여 HTML 파싱
+        soup = bs(response.text, 'html.parser')
+
+        # 웹 페이지에서 특정 테이블 선택
+        # 웹 페이지의 HTML 구조를 확인하여 실제 표에 해당하는 부분을 선택합니다.
+        table = soup.find('table')  # 이 부분을 웹 페이지의 실제 HTML 구조에 맞게 수정하세요.
+
+        # 표의 각 행(row)과 열(column) 순회
+        for row in table.find_all('tr'):
+            columns = row.find_all('td')
+            for column in columns:
+                # 각 셀의 내용을 출력하거나 원하는 처리를 수행
+                total_craw += "\n"+column.text
+                #print(column.text)  # 현재는 텍스트를 출력하는 예제입니다.
+    elif response.status_code == 404:
+        print("더이상 페이지가 없습니다.")
+        break
+    
+    page_num += 1
+
+
 for line in total_craw.split("CVE"):
     if line == '\n':
         continue
@@ -86,4 +93,4 @@ for line in total_craw.split("CVE"):
         list_value.append(value)
     total_info.append(list_value)
 
-#print(total_info)
+print(len(total_info))
