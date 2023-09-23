@@ -24,7 +24,6 @@ def create_db():
     # cve_extract 테이블 생성 쿼리
     create_table_query = """
     CREATE TABLE IF NOT EXISTS cve_extract (
-        id_num INTEGER PRIMARY KEY,
         cve_name TEXT,
         vendors TEXT,
         products TEXT,
@@ -46,8 +45,10 @@ def create_db():
 # ====
 # 1. db를 생성
 #create_db()
+#sys.exit()
 
 # 2. cve에 나온 내용 크롤링
+print(f"[*] CVE 크롤링 start - {input_vendor}")
 total_info = [] # [cve_name, vendors ,products ,update_date ,cvss_v2 ,cvss_v3 ,desc_en]
 
 page_num = 1
@@ -58,6 +59,7 @@ while True:
     response = requests.get(page_path)
     #print(target_path)
     
+    print(f"    => page {page_num} 진행중")
     if response.status_code == 200:
         # BeautifulSoup을 사용하여 HTML 파싱
         soup = bs(response.text, 'html.parser')
@@ -78,19 +80,34 @@ while True:
         break
     
     page_num += 1
+print(f"[*] CVE 크롤링 finish")
 
+print(f"[*] 크롤링된 데이터 가공중")
+list_craw = total_craw.split(".\nCVE")
+list_craw[0] = list_craw[0][4:]
 
-for line in total_craw.split("CVE"):
-    if line == '\n':
-        continue
-    line = "CVE"+line
-    list_value = []
+for line in list_craw:
+    line = "CVE" + line
     
-    # 내부 구조
-    for value in line.split('\n'):
-        if value == '':
-            continue
-        list_value.append(value)
-    total_info.append(list_value)
+    list_line = line.split('\n')
+    # [cve_name, vendors ,products ,update_date ,cvss_v2 ,cvss_v3 ,desc_en]
+    list_line = list(filter(None, list_line)) # 7개
+    
+    total_info.append(list_line)
+print(f"[*] 가공 완료")
 
-print(len(total_info))
+print(f"[*] insert data")
+# total_info에 담긴 데이터를 splite에 insert
+con = sqlite3.connect('cve_extract.db')
+cur = con.cursor()
+for row in total_info:
+    if len(row) == 1:
+        print(row)
+        sys.exit()
+    cur.execute("""INSERT INTO cve_extract 
+                (cve_name, vendors ,products ,update_date ,cvss_v2 ,cvss_v3 ,desc_en)
+                VALUES (?, ?, ?, ?, ?, ?, ?)"""
+                ,(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+                )
+con.commit()
+con.close()
